@@ -25,10 +25,10 @@ class Cache {
     if(!this.anime[year]) await this.updateAnimeSeasonal(year,season,offset)
     if(!this.anime[year][season]) await this.updateAnimeSeasonal(year,season,offset)
     if(!this.anime[year][season][offset]) await this.updateAnimeSeasonal(year,season,offset)
-    if ((Date.now() - this.anime[year][season][offset].timestamp) >= this.expiraction) await this.updateAnimeSeasonal(year,season,offset)
+    if ((Date.now() - this.anime[year][season][offset].timestamp) >= this.expiraction) await this.updateAnimeSeasonal(year,season,offset,limit)
     if(this.err.anime){
       await this.updateAnimeSeasonal();
-      if(this.err.anime) return false;
+      if(this.err.anime) return {message: "could not get anime "}
     };
     return this.anime[year][season][offset]
   }
@@ -57,7 +57,7 @@ class Cache {
   }
   async updateAnimeSeasonal(year= new Date().getFullYear(),season= seasons[Math.round((new Date().getMonth()+1)/4)],offset=0,limit=10){
     try{
-      const req = await fetch(`https://api.myanimelist.net/v2/anime/season/${year}/${season}?offset=${offset}&limit=${limit}`,{
+      const req = await fetch(`https://api.myanimelist.net/v2/anime/season/${year}/${season}?offset=${offset}&limit=${limit}&raiting&studios&source&num_episodes&genres&status&mean&synopsis`,{
 	method:"GET",
 	headers: {
 	  'X-MAL-CLIENT-ID': this.anime.apiKey
@@ -105,15 +105,25 @@ app.get("/", (req,res) => {
   console.log(req.params)
   res.send(req.params.session ? req.params.session : "k")
 })
-
-app.get('/api/mal', async (req,res) => {
+app.get('/api/mal/raking', async (req,res) => {
   const limit = req.query.limit
   const offset = req.query.offset
   const year = req.query.year
   const season = req.query.season
-  if (isNaN(limit)) return res.status(401).end()
-  if(isNaN(offset)) return res.status(401).end()
-  if (seasons.indexOf() == -1) return res.status(401).end()
+  if (limit && isNaN(limit)) return res.status(401).send("invalid limit")
+  if(isNaN(offset)) return res.status(401).send("invalid offset")
+  if (seasons.indexOf(season) == -1) return res.status(401).send("invalid season")
+  res.send(await cache.getAnime(year,season,offset,limit))
+})
+
+app.get('/api/mal/seasonal', async (req,res) => {
+  const limit = req.query.limit
+  const offset = req.query.offset
+  const year = req.query.year
+  const season = req.query.season
+  if (limit && isNaN(limit)) return res.status(401).send("invalid limit")
+  if(isNaN(offset)) return res.status(401).send("invalid offset")
+  if (seasons.indexOf(season) == -1) return res.status(401).send("invalid season")
   res.send(await cache.getAnime(year,season,offset,limit))
 })
 app.get("api/nyt", async(req,res) => {
