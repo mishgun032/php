@@ -88,7 +88,7 @@ class Cache {
   async updateAnimeSeasonal(year= new Date().getFullYear(),season= seasons[Math.round((new Date().getMonth()+1)/4)],offset=0,limit=10){
     console.log('fetching anime')
     try{
-      const req = await fetch(`https://api.myanimelist.net/v2/anime/season/${year}/${season}?offset=${offset}&limit=${limit}&raiting&studios&source&num_episodes&genres&status&mean&synopsis`,{
+      const req = await fetch(`https://api.myanimelist.net/v2/anime/season/${year}/${season}?offset=${offset}&limit=${limit}&fields=raiting,studios,source,num_episodes,genres,status,mean,synopsis`,{
 	method:"GET",
 	headers: {
 	  'X-MAL-CLIENT-ID': this.anime.apiKey
