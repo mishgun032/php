@@ -1,21 +1,30 @@
 import express from 'express'
-const app = express()
 import cors from 'cors'
-const port = 8080
 import fetch from 'node-fetch'
 import bcrypt  from 'bcrypt';
-
+import cookieParser from 'cookie-parser'
+import { PrismaClient } from '@prisma/client'
 import { createClient } from 'redis';
+
+
+const port = 8080
+const app = express()
+
 export const redis = createClient();
 redis.on('error', err => console.log('Redis Client Error', err));
 await redis.connect();
 
-import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 import { isLoggedIn, login, revalidateToken} from "./auth.js"
 
 app.use(cors())
+app.use(cookieParser())
+app.use(isLoggedIn.unless({
+  path: ["/login","/","/createuser","/api/mal/seasonal"],
+}));
+app.use(express.json())
+
 
 class Cache {
   constructor(){
@@ -142,12 +151,6 @@ class Cache {
 const seasons = ["winter","spring","summer","fall"]
 const cache = new Cache()
 
-app.use(isLoggedIn.unless({
-  path: ["/login","/","/createuser","/token","/api/mal/seasonal"],
-  
-}));
-app.use(express.json())
-
 app.get("/", (req,res) => {res.redirect("https://www.youtube.com/watch?v=dQw4w9WgXcQ")})
 
 app.post("/createuser", async (req,res) => {
@@ -202,13 +205,10 @@ app.post("/token", async (req,res) => {
 })
 
 app.post("/addtodoitem", async (req,res) => {
-  console.log('here')
   const {title,categories,description} = req.body
   if(!title) return res.json({error: "invalid item"});
   if(description){if(!Array.isArray(description)) return res.json({error: "invalid description"})};
   try{
-    console.log(res.locals)
-    console.log({owner: {id: res.locals.id},name: title, user_id: res.locals.id})
     const todo_item= await prisma.todo_items.create({ data: {name: title, user_id: res.locals.id}})
     return res.json({message: "item added", todo_item: todo_item})
   }catch(err){
