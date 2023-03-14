@@ -21,10 +21,7 @@ export async function login(name,id){
   if(!id) throw new Err("invalid user id");
 
   const token = generateAccessToken(name,id)
-  const refresh_token = jwt.sign({
-    user_id: id,
-    user_name: name,
-  },process.env.REFRESH_TOKEN_SECRET)
+  const refresh_token = jwt.sign({},process.env.REFRESH_TOKEN_SECRET)
   await redis.HSET(refresh_token, "user_id", id)
   await redis.HSET(refresh_token, "user_name", name)
   return {token,refresh_token}
