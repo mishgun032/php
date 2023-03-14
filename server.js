@@ -217,6 +217,17 @@ app.post("/addtodoitem", async (req,res) => {
   }
 })
 
+app.post("/addtodocategory", async (req,res) => {
+  if(!req.body.category_name){ return res.json({error: "invalid category"})}
+  try{
+    const category = await prisma.todo_categories.create({ data: {name: req.body.category_name, user_id: res.locals.id}})
+    return res.json({message: "category added", category: category})
+  }catch(err){
+    console.log(err)
+    return res.json({error: "could not add the category"})
+  }
+})
+
 app.get('/api/mal/raking', async (req,res) => {
   try{
     const limit = req.query.limit
