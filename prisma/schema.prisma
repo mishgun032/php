@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id                Int                 @id @default(autoincrement())
+  name              String              @db.VarChar(10) @unique
+  password          String
+  todo_items        todo_items[]
+  todo_categories   todo_categories[]
+  categories_shared categories_shared[]
+}
+
+model todo_items {
+  id             Int              @id @default(autoincrement())
+  owner          users            @relation(fields: [user_id], references: [id])
+  user_id        Int
+  name           String           @db.VarChar(50)
+  status         Boolean          @default(false)
+  priority       Int              @db.TinyInt() @default(1)
+  due            DateTime?        @db.Date
+  desc           Json?
+  category_items category_items[]
+}
+
+//technically speaking todo categories is something like a list on its own
+//hower some items can have multiple categories
+model todo_categories {
+  id                Int                 @id @default(autoincrement())
+  owner             users               @relation(fields: [user_id], references: [id])
+  user_id           Int
+  name              String              @db.VarChar(50)
+  desc              String              @db.VarChar(50)
+  category_items    category_items[]
+  categories_shared categories_shared[]
+}
+
+model category_items {
+  item        todo_items      @relation(fields: [item_id], references: [id])
+  item_id     Int
+  category    todo_categories @relation(fields: [category_id], references: [id])
+  category_id Int
+
+  @@unique([item_id, category_id])
+}
+
+model categories_shared {
+  category    todo_categories @relation(fields: [category_id], references: [id])
+  category_id Int
+  user        users           @relation(fields: [user_id], references: [id])
+  user_id     Int
+
+  @@unique([category_id, user_id])
+}
