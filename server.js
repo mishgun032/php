@@ -1,3 +1,11 @@
+import https from "https"
+import fs from "fs"
+import {COOKIE_LIFE_TIME} from './constants.js'
+const options = {
+  key: fs.readFileSync('./localhost-key.pem'),
+  cert: fs.readFileSync('./localhost.pem'),
+};
+
 import express from 'express'
 import cors from 'cors'
 import fetch from 'node-fetch'
@@ -7,24 +15,29 @@ import { PrismaClient } from '@prisma/client'
 import { createClient } from 'redis';
 
 
-const port = 8080
+const port = 3001
 const app = express()
 
 export const redis = createClient();
 redis.on('error', err => console.log('Redis Client Error', err));
 await redis.connect();
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient({log: ["query"]})
 
 import { isLoggedIn, login, revalidateToken} from "./auth.js"
 
-app.use(cors())
+
+app.use(cors({
+  origin: true,
+  credentials: true,
+  exposedHeaders: "Set-Cookie",
+  methods: "GET,POST",
+}))
 app.use(cookieParser())
 app.use(isLoggedIn.unless({
-  path: ["/login","/","/createuser","/api/mal/seasonal"],
+  path: ["/login","/","/createuser","/api/mal/seasonal","/token"],
 }));
 app.use(express.json())
-
 
 class Cache {
   constructor(){
@@ -151,7 +164,7 @@ class Cache {
 const seasons = ["winter","spring","summer","fall"]
 const cache = new Cache()
 
-app.get("/", (req,res) => {res.redirect("https://www.youtube.com/watch?v=dQw4w9WgXcQ")})
+app.get("/", (req,res) => res.redirect("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
 
 app.post("/createuser", async (req,res) => {
   if (!req.body.user_name) return res.status(400).end()
@@ -178,9 +191,8 @@ app.post("/login", async (req,res) => {
       if(!result){return res.send(JSON.stringify({error: "invalid password"}))}
       const {token,refresh_token} = await login(user.name,user.id)
       if(!token || !refresh_token) return res.json({error: "could not log you in"})
-      console.log(token)
-      console.log(refresh_token)
-      return res.json({message: "you are logged in",token: token,refresh_token: refresh_token})
+      res.cookie("access_token",token, { maxAge: COOKIE_LIFE_TIME, httpOnly: true, secure: true, sameSite: "none",expires: new Date(Date.now() + COOKIE_LIFE_TIME) })
+      return res.json({message: "you are logged in",refresh_token: refresh_token})
     });
   } catch (err) { console.log(err); return res.send(JSON.stringify({error:"something went wrong"}))}
 })
@@ -190,17 +202,30 @@ app.post("/logout", async (req,res) => {
 })
 
 app.post("/token", async (req,res) => {
-  if(!req.body.token){return res.json({error: "invalid token"})}
+  if(!req.body.refresh_token){return res.json({error: "invalid token"})}
   try{
-    const isTokenValid = await redis.EXISTS(req.body.token)
+    const isTokenValid = await redis.EXISTS(req.body.refresh_token)
     if(isTokenValid <= 0){return res.json({error: "invalid token"})}
-    const token = await revalidateToken(req.body.token)
+    const userData= await redis.HGETALL(req.body.refresh_token)
+    const token = await revalidateToken(req.body.refresh_token,userData)
     console.log('token')
     console.log(token)
-    res.json({message: "refreshed access token", token: token})
+    res.cookie("access_token",token, { maxAge: COOKIE_LIFE_TIME, httpOnly: true, secure: true, sameSite: "none",expires: new Date(Date.now() + COOKIE_LIFE_TIME) })
+    res.json({message: "refreshed access token"})
   }catch(err){
     console.log(err)
-    return res.json({error: "could not check your token"})
+    return res.json({error: "could not revalidate your token"})
+  }
+})
+
+
+app.get("/gettodoitems", async (req,res) => {
+  try{
+    const todo_items = prisma.todo_items.findMany({where: {user_id: res.locals.id}})
+    res.json({message: "successfully found your todo items", todo_items: todo_items})
+  }catch(err){
+    console.log(err)
+    res.json({error: "could not get your todo items"})
   }
 })
 
@@ -214,6 +239,17 @@ app.post("/addtodoitem", async (req,res) => {
   }catch(err){
     console.log(err)
     res.json("something went wrong")
+  }
+})
+
+app.delete("/deletetodoitem", async (req,res) => {
+  const {id} = req.body
+  if(!id || isNaN(id)) return res.json({error: "invalid todo item"})
+  try{
+    const result = prisma.todo_items.delete({where: {user_id: res.locals.id, id:id}})
+  }catch(err){
+    console.log(err)
+    res.json({error: 'could not delete the doto item from the server'})
   }
 })
 
@@ -266,11 +302,11 @@ app.post('*', function(req, res){
   res.status(404).send('route not found ???');
 });
 
-app.listen( port, () => {
-//  setInterval( () => cache.update(), 7200000)
-  cache.update()
-  console.log(`running on port ${port}`)
-})
+//app.listen( port, () => {
+////  setInterval( () => cache.update(), 7200000)
+//  cache.update()
+//  console.log(`running on port ${port}`)
+//})
 
 app.use((err, req, res, next) => {
   console.log(err)
@@ -280,3 +316,7 @@ app.use((err, req, res, next) => {
   return res.status(isNaN(err) ? "500" : err).send(JSON.stringify({error: "Something went wrong"}))
 })
 
+
+https.createServer(options,app).listen(port, () => {
+  console.log(`running on port ${port}`)
+})

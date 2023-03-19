@@ -3,11 +3,10 @@ import jwt from 'jsonwebtoken'
 import {redis} from './server.js'
 
 export const isLoggedIn = (req,res,next) => {
-  if(!req.headers.token){res.locals.logged_in = false; return next(401)}
-  jwt.verify(req.headers.token, process.env.ACCESS_TOKEN_SECRET, (err,usr) => {
+  console.log(req.cookies)
+  if(!req.cookies.access_token){return next(401)}
+  jwt.verify(req.cookies.access_token, process.env.ACCESS_TOKEN_SECRET, (err,usr) => {
     if(err){console.log(err); return next(403)};
-    console.log('usr')
-    console.log(usr)
     res.locals.logged_in = true
     res.locals.id = usr.user_id
     res.locals.name = usr.user_name
@@ -28,8 +27,8 @@ export async function login(name,id){
 }
 
 export function generateAccessToken(name,id){
-  if(!name) throw new Err("invalid user name");
-  if(!id) throw new Err("invalid user id");
+  if(!name) throw new Error("invalid user name");
+  if(!id) throw new Error("invalid user id");
 
   return jwt.sign({
     user_id: id,
@@ -37,11 +36,11 @@ export function generateAccessToken(name,id){
   },process.env.ACCESS_TOKEN_SECRET,{expiresIn: "10h"})
 }
 
-export function revalidateToken(refreshToken){
+export function revalidateToken(refreshToken,{user_id,user_name}){
   return new Promise( (resolve,reject) => {
     jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err,user) => {
       if(err){console.log(err); return reject("could not revalidate your token");}
-      return resolve(generateAccessToken(user.user_name,user.user_id))
+      return resolve(generateAccessToken(user_id,user_name))
     })
   })
 }

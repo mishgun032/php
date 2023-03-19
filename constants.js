@@ -1,0 +1,1 @@
+export const COOKIE_LIFE_TIME=3600000
