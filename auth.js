@@ -40,7 +40,7 @@ export function revalidateToken(refreshToken,{user_id,user_name}){
   return new Promise( (resolve,reject) => {
     jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err,user) => {
       if(err){console.log(err); return reject("could not revalidate your token");}
-      return resolve(generateAccessToken(user_id,user_name))
+      return resolve(generateAccessToken(user_name,user_id,))
     })
   })
 }
