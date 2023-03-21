@@ -20,7 +20,7 @@ model todo_items {
   id             Int              @id @default(autoincrement())
   owner          users            @relation(fields: [user_id], references: [id])
   user_id        Int
-  name           String           @db.VarChar(50)
+  name           String           @db.VarChar(100)
   status         Boolean          @default(false)
   priority       Int              @db.TinyInt() @default(1)
   due            DateTime?        @db.Date
@@ -32,13 +32,14 @@ model todo_items {
 //technically speaking todo categories is something like a list on its own
 //hower some items can have multiple categories
 model todo_categories {
-  id                Int                 @id @default(autoincrement())
-  owner             users               @relation(fields: [user_id], references: [id])
+  id                Int                  @id @default(autoincrement())
+  owner             users                @relation(fields: [user_id], references: [id])
   user_id           Int
-  name              String              @db.VarChar(50)
-  desc              String              @db.VarChar(50)
+  name              String               @db.VarChar(50)
+  desc              String?              @db.VarChar(50)
   category_items    category_items[]
   categories_shared categories_shared[]
+  @@unique(fields: [user_id, id])
 }
 
 model category_items {

@@ -283,13 +283,32 @@ app.post("/deletetodoitem", async (req,res) => {
 })
 
 app.post("/addtodocategory", async (req,res) => {
-  if(!req.body.category_name){ return res.json({error: "invalid category"})}
+  const {category_name,description} = req.body
+  if(!category_name){ return res.json({error: "invalid category"})}
+  const data = {
+    name: req.body.category_name,
+    user_id: +res.locals.id
+  }
+  description.length != 0 ? data.desc = description : null;
   try{
-    const category = await prisma.todo_categories.create({ data: {name: req.body.category_name, user_id: res.locals.id}})
+    const category = await prisma.todo_categories.create({ data: data})
     return res.json({message: "category added", category: category})
   }catch(err){
     console.log(err)
     return res.json({error: "could not add the category"})
+  }
+})
+
+app.post("/deletecategory", async (req,res) => {
+  const {id} = req.body
+  if(!id || isNaN(id)) res.json({error: "invalid category"})
+  try{
+    const result = await prisma.todo_categories.deleteMany({ where: {user_id: +res.locals.id, id: +id}})
+    console.log(result)
+    res.json({message: "category removed"})
+  }catch(err){
+    console.log(err)
+    res.json({error: "something went wrong"})
   }
 })
 
