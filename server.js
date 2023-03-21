@@ -221,7 +221,8 @@ app.post("/token", async (req,res) => {
 
 app.get("/gettodoitems", async (req,res) => {
   try{
-    const todo_items = prisma.todo_items.findMany({where: {user_id: res.locals.id}})
+    const todo_items = await prisma.todo_items.findMany({where: {user_id: +res.locals.id}})
+    console.log(todo_items)
     res.json({message: "successfully found your todo items", todo_items: todo_items})
   }catch(err){
     console.log(err)
@@ -234,7 +235,7 @@ app.post("/addtodoitem", async (req,res) => {
   if(!title) return res.json({error: "invalid item"});
   if(description){if(!Array.isArray(description)) return res.json({error: "invalid description"})};
   try{
-    const todo_item= await prisma.todo_items.create({ data: {name: title, user_id: res.locals.id}})
+    const todo_item= await prisma.todo_items.create({ data: {name: title, user_id: +res.locals.id}})
     return res.json({message: "item added", todo_item: todo_item})
   }catch(err){
     console.log(err)
@@ -243,10 +244,14 @@ app.post("/addtodoitem", async (req,res) => {
 })
 
 app.delete("/deletetodoitem", async (req,res) => {
+app.post("/deletetodoitem", async (req,res) => {
+  console.log('here')
   const {id} = req.body
   if(!id || isNaN(id)) return res.json({error: "invalid todo item"})
   try{
-    const result = prisma.todo_items.delete({where: {user_id: res.locals.id, id:id}})
+    const result = await prisma.todo_items.deleteMany({where: {user_id: +res.locals.id, id:+id}})
+    console.log(result)
+    res.json({message: "item delted"})
   }catch(err){
     console.log(err)
     res.json({error: 'could not delete the doto item from the server'})

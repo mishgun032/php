@@ -26,6 +26,7 @@ model todo_items {
   due            DateTime?        @db.Date
   desc           Json?
   category_items category_items[]
+  @@unique(fields: [user_id, id])
 }
 
 //technically speaking todo categories is something like a list on its own
