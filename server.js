@@ -243,7 +243,31 @@ app.post("/addtodoitem", async (req,res) => {
   }
 })
 
-app.delete("/deletetodoitem", async (req,res) => {
+app.post("/addtodoitems", async (req,res) => {
+ 
+})
+
+app.post("/changetodoitem", async (req,res) => {
+  const {title,categories,description,id} = req.body
+  const data = {}
+  if(!id || isNaN(id)) return res.json({error: "invalid todo item"})
+  if(title) data.name = title
+  if(description && Array.isArray(description)) data.desc = description
+  if(Object.keys(data).length === 0) res.json({error: "nothing to update"})
+//  if(cate
+  try{
+    const result = await prisma.todo_items.updateMany({
+      data:data,
+      where: { user_id: +res.locals.id, id: id }
+    })
+    console.log(result)
+    res.json({message: "changed your item"})
+  }catch(err){
+    console.log(err)
+    res.json({error: "something went wrong"})
+  }
+})
+
 app.post("/deletetodoitem", async (req,res) => {
   console.log('here')
   const {id} = req.body
