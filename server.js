@@ -96,13 +96,6 @@ class Cache {
 //    if(this.nyt.topStories[section]
     await this.updateNytTopStories(section)
   }
-  getGithub(){
-
-  }
-  getTodo(){
-
-  }
-
   //populating  
   async update(){
 
@@ -221,7 +214,18 @@ app.post("/token", async (req,res) => {
 
 app.get("/gettodoitems", async (req,res) => {
   try{
-    const todo_items = await prisma.todo_items.findMany({where: {user_id: +res.locals.id}})
+    const todo_items = await prisma.todo_items.findMany({
+      where: {user_id: +res.locals.id},
+      select: {
+        id: true,
+        name: true,
+        desc: true,
+        category_items: {
+          select: {category_id: true}
+        }
+      },
+      orderBy: {id: "desc"}
+    })
     console.log(todo_items)
     res.json({message: "successfully found your todo items", todo_items: todo_items})
   }catch(err){
@@ -231,11 +235,13 @@ app.get("/gettodoitems", async (req,res) => {
 })
 
 app.post("/addtodoitem", async (req,res) => {
-  const {title,categories,description} = req.body
+  const {title,category_id,description} = req.body
   if(!title) return res.json({error: "invalid item"});
   if(description){if(!Array.isArray(description)) return res.json({error: "invalid description"})};
+  let category_items = {}
+  if(category_id && !isNaN(category_id)){category_items.create={};category_items.create.category_id=category_id}
   try{
-    const todo_item= await prisma.todo_items.create({ data: {name: title, user_id: +res.locals.id}})
+    const todo_item= await prisma.todo_items.create({ data: {name: title, user_id: +res.locals.id,category_items}})
     return res.json({message: "item added", todo_item: todo_item})
   }catch(err){
     console.log(err)
@@ -248,7 +254,7 @@ app.post("/addtodoitems", async (req,res) => {
 })
 
 app.post("/changetodoitem", async (req,res) => {
-  const {title,categories,description,id} = req.body
+  const {title,description,id} = req.body
   const data = {}
   if(!id || isNaN(id)) return res.json({error: "invalid todo item"})
   if(title) data.name = title
@@ -310,6 +316,24 @@ app.post("/deletecategory", async (req,res) => {
     console.log(err)
     res.json({error: "something went wrong"})
   }
+})
+
+app.post("/addcategorytoitem", async (req,res) => {
+  const {category_id,item_id} = req.body
+  if((isNaN(category_id) || !category_id) || (isNaN(item_id) || !item_id)) return res.json({error: 'invalid data'})
+  const ctgOwner = await prisma.todo_categories.findMany({where: {id: category_id,user_id: +res.locals.id}})
+  if(ctgOwner){
+    const sharedCtg = await prisma.categories_shared.findMany({where: {user_id: +res.locals.id, category_id: category_id}})
+    if(!sharedCtg) return res.json({error: "you cannot add item to this category"})
+  }
+  const itemOwner = await prisma.todo_items.findMany({ where: {id: item_id, user_id: +res.locals.id}})
+  if(!itemOwner) return res.json({error: "you cannot add this item"})
+  const result = await prisma.category_items.create({ data: {item_id: item_id,category_id: category_id}})
+  res.json({message: "category added"})
+})
+
+app.post("/removecategoryfromitem", async (req,res) => {
+  
 })
 
 app.get('/api/mal/raking', async (req,res) => {

@@ -14,6 +14,7 @@ model users {
   todo_items        todo_items[]
   todo_categories   todo_categories[]
   categories_shared categories_shared[]
+  category_items    category_items[]
 }
 
 model todo_items {
@@ -36,7 +37,7 @@ model todo_categories {
   owner             users                @relation(fields: [user_id], references: [id])
   user_id           Int
   name              String               @db.VarChar(50)
-  desc              String?              @db.VarChar(50)
+  desc              String?              @db.VarChar(50) @default("[]")
   category_items    category_items[]
   categories_shared categories_shared[]
   @@unique(fields: [user_id, id])
@@ -47,7 +48,8 @@ model category_items {
   item_id     Int
   category    todo_categories @relation(fields: [category_id], references: [id])
   category_id Int
-
+  user        users           @relation(fields: [added_by], references: [id])
+  added_by    Int
   @@unique([item_id, category_id])
 }
 
