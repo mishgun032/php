@@ -173,6 +173,19 @@ app.post("/createuser", async (req,res) => {
   });
 })
 
+app.post("/getusers", async (req,res) => {
+  const {input} = req.body
+  if(input.length == 0 || input == undefined) return res.json({error: "invalid input"})
+  try{
+    const users = await prisma.users.findMany({where: { name: {contains: input}}})
+    console.log(users)
+    res.json({message: "all the users that match the given name", users: users})
+  }catch(err){
+    console.log(err)
+    res.json({error: "something went wrong"})
+  }
+})
+
 app.post("/login", async (req,res) => {
   if (!req.body.user_name) return  res.status(400).end()
   if (!req.body.password) return res.status(400).end()
