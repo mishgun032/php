@@ -14,7 +14,6 @@ model users {
   todo_items        todo_items[]
   todo_categories   todo_categories[]
   categories_shared categories_shared[]
-  category_items    category_items[]
 }
 
 model todo_items {
@@ -25,39 +24,44 @@ model todo_items {
   status         Boolean          @default(false)
   priority       Int              @db.TinyInt() @default(1)
   due            DateTime?        @db.Date
-  desc           Json?
+  desc           Json?            @default("[]")
   category_items category_items[]
   @@unique(fields: [user_id, id])
 }
 
 //technically speaking todo categories is something like a list on its own
-//hower some items can have multiple categories
+//however some items can have multiple categories
 model todo_categories {
   id                Int                  @id @default(autoincrement())
   owner             users                @relation(fields: [user_id], references: [id])
   user_id           Int
   name              String               @db.VarChar(50)
-  desc              String?              @db.VarChar(50) @default("[]")
-  category_items    category_items[]
+  desc              String?              @db.VarChar(50) 
   categories_shared categories_shared[]
+  category_items category_items[]
   @@unique(fields: [user_id, id])
 }
 
 model category_items {
-  item        todo_items      @relation(fields: [item_id], references: [id])
+  item        todo_items      @relation(fields: [item_id], references: [id], onDelete: Cascade)
   item_id     Int
-  category    todo_categories @relation(fields: [category_id], references: [id])
+  category    todo_categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  categories_shared categories_shared @relation(fields: [category_id,added_by], references: [category_id,user_id], onDelete: Cascade)
   category_id Int
-  user        users           @relation(fields: [added_by], references: [id])
   added_by    Int
   @@unique([item_id, category_id])
 }
 
 model categories_shared {
-  category    todo_categories @relation(fields: [category_id], references: [id])
+  category    todo_categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
   category_id Int
   user        users           @relation(fields: [user_id], references: [id])
   user_id     Int
+  add         Boolean         @default(true)
+  change      Boolean         @default(true)
+  share       Boolean         @default(true)
+  delete      Boolean         @default(true)
 
+  category_items category_items[]
   @@unique([category_id, user_id])
 }
