@@ -204,7 +204,8 @@ app.post("/login", async (req,res) => {
 })
 
 app.post("/logout", async (req,res) => {
- 
+  res.clearCookie("access_token")
+  res.json({message: "you are logged out"})
 })
 
 app.post("/token", async (req,res) => {
