@@ -3,10 +3,9 @@ import jwt from 'jsonwebtoken'
 import {redis} from './server.js'
 
 export const isLoggedIn = (req,res,next) => {
-  console.log(req.cookies)
   if(!req.cookies.access_token){return next(401)}
   jwt.verify(req.cookies.access_token, process.env.ACCESS_TOKEN_SECRET, (err,usr) => {
-    if(err){console.log(err); return next(403)};
+    if(err){console.log(err); res.clearCookie("access_token");return next(403)};
     res.locals.logged_in = true
     res.locals.id = usr.user_id
     res.locals.name = usr.user_name
