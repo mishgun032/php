@@ -55,7 +55,7 @@ class Cache {
 
   //all the getters
   async getSeasonalAnime(year= new Date().getFullYear(),season= seasons[Math.round((new Date().getMonth()+1)/4)],offset=0,limit=10){
-    return;
+//    return;
     if(this.err.anime){
       await this.updateAnimeSeasonal(year,season,offset);
       if(this.err.anime) return {message: "could not get anime "}
