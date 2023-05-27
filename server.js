@@ -55,7 +55,6 @@ class Cache {
 
   //all the getters
   async getSeasonalAnime(year= new Date().getFullYear(),season= seasons[Math.round((new Date().getMonth()+1)/4)],offset=0,limit=10){
-//    return;
     if(this.err.anime){
       await this.updateAnimeSeasonal(year,season,offset);
       if(this.err.anime) return {message: "could not get anime "}
@@ -69,7 +68,7 @@ class Cache {
 	}
       }
     }
-    await this.updateAnimeSeasonal(year,season,offset)
+    await this.updateAnimeSeasonal(year,season,offset,limit)
     return await this.getSeasonalAnime(year,season,offset,limit)
   }
   async getTopAnime(){
@@ -103,7 +102,7 @@ class Cache {
   async updateAnimeSeasonal(year= new Date().getFullYear(),season= seasons[Math.round((new Date().getMonth()+1)/4)],offset=0,limit=10){
     console.log('fetching anime')
     try{
-      const req = await fetch(`https://api.myanimelist.net/v2/anime/season/${year}/${season}?offset=${offset}&limit=${limit}&fields=raiting,studios,source,num_episodes,genres,status,mean,synopsis`,{
+      const req = await fetch(`https://api.myanimelist.net/v2/anime/season/${year}/${season}?offset=${offset}&limit=${limit}&sort=anime_num_list_users&fields=raiting,studios,source,num_episodes,genres,status,mean,synopsis`,{
 	method:"GET",
 	headers: {
 	  'X-MAL-CLIENT-ID': this.anime.apiKey
@@ -215,8 +214,6 @@ app.post("/token", async (req,res) => {
     if(isTokenValid <= 0){return res.json({error: "invalid token"})}
     const userData= await redis.HGETALL(req.body.refresh_token)
     const token = await revalidateToken(req.body.refresh_token,userData)
-    console.log('token')
-    console.log(token)
     res.cookie("access_token",token, { maxAge: COOKIE_LIFE_TIME, httpOnly: true, secure: true, sameSite: "none",expires: new Date(Date.now() + COOKIE_LIFE_TIME) })
     res.json({message: "refreshed access token"})
   }catch(err){
