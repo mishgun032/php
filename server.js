@@ -1,7 +1,8 @@
 import https from "https"
+import http from 'http'
 import fs from "fs"
 import {COOKIE_LIFE_TIME} from './constants.js'
-const options = {
+const ssl = {
   key: fs.readFileSync('./localhost-key.pem'),
   cert: fs.readFileSync('./localhost.pem'),
 };
@@ -14,8 +15,8 @@ import cookieParser from 'cookie-parser'
 import { PrismaClient } from '@prisma/client'
 import { createClient } from 'redis';
 
-
-const port = 3001
+const httpPort = 8080;
+const httpsPort = 3001;
 const app = express()
 
 export const redis = createClient();
@@ -399,7 +400,8 @@ app.use((err, req, res, next) => {
   return res.status(isNaN(err) ? "500" : err).send(JSON.stringify({error: "Something went wrong"}))
 })
 
+const httpsServer = https.createServer(ssl,app)
+const httpServer = http.createServer(app)
 
-https.createServer(options,app).listen(port, () => {
-  console.log(`running on port ${port}`)
-})
+httpServer.listen(httpPort);
+httpsServer.listen(httpsPort);
