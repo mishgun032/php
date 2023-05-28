@@ -261,19 +261,48 @@ app.post("/token", async (req,res) => {
 
 app.get("/gettodoitems", async (req,res) => {
   try{
-    const todo_items = await prisma.todo_items.findMany({
-      where: {user_id: +res.locals.id},
+    const todo_items = await prisma.categories_shared.findMany({
+      where: {
+        user_id: +res.locals.id
+      },
+      select: {
+        category: {
+          select: {
+            name: true,
+            id: true,
+            category_items: {
+              select: {
+                item: {
+                  select: {
+                    id: true,
+                    name: true,
+                    status: true,
+                    desc: true,
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      orderBy: {category_id: "desc"}
+    })
+    const uncategorised = await prisma.todo_items.findMany({
+      where: {
+        user_id: +res.locals.id,
+          category_items: {
+            none: {
+              added_by: +res.locals.id
+            }
+          }
+      },
       select: {
         id: true,
         name: true,
+        status: true,
         desc: true,
-        category_items: {
-          select: {category_id: true}
-        }
-      },
-      orderBy: {id: "desc"}
+      }
     })
-    console.log(todo_items)
     res.json({message: "successfully found your todo items", todo_items: todo_items})
   }catch(err){
     console.log(err)
@@ -285,10 +314,9 @@ app.post("/addtodoitem", async (req,res) => {
   const {title,category_id,description} = req.body
   if(!title) return res.json({error: "invalid item"});
   if(description){if(!Array.isArray(description)) return res.json({error: "invalid description"})};
-  let category_items = {}
-  if(category_id && !isNaN(category_id)){category_items.create={};category_items.create.category_id=category_id}
+  if(category_id && !isNaN(category_id)) return res.json({error: "category not synced"})
   try{
-    const todo_item= await prisma.todo_items.create({ data: {name: title, user_id: +res.locals.id,category_items}})
+    const todo_item= await prisma.todo_items.create({ data: {name: title, user_id: +res.locals.id}})
     return res.json({message: "item added", todo_item: todo_item})
   }catch(err){
     console.log(err)
@@ -340,7 +368,12 @@ app.post("/addtodocategory", async (req,res) => {
   if(!category_name){ return res.json({error: "invalid category"})}
   const data = {
     name: req.body.category_name,
-    user_id: +res.locals.id
+    user_id: +res.locals.id,
+    categories_shared: {
+      create: {
+        user_id: +res.locals.id
+      }
+    }
   }
   description.length != 0 ? data.desc = description : null;
   try{
@@ -365,22 +398,84 @@ app.post("/deletecategory", async (req,res) => {
   }
 })
 
+app.get("/getallusercategories", async (req,res) => {
+  try{
+    const categories = await prisma.categories_shared.findMany({ where: {user_id: +res.locals.id},
+                                                                       select: {
+                                                                         category: {
+                                                                           select: {
+                                                                             id: true,
+                                                                             name: true,
+                                                                             desc: true
+                                                                           }
+                                                                         },
+                                                                       }
+    })
+    categories.forEach( (ctg,index) => categories[index] = ctg.category)
+    res.json({message: "your categories", categories: categories})
+  }catch(err){
+    console.log(err)
+    res.json({error: "something went wrong"})
+  }
+})
+
 app.post("/addcategorytoitem", async (req,res) => {
   const {category_id,item_id} = req.body
   if((isNaN(category_id) || !category_id) || (isNaN(item_id) || !item_id)) return res.json({error: 'invalid data'})
-  const ctgOwner = await prisma.todo_categories.findMany({where: {id: category_id,user_id: +res.locals.id}})
-  if(ctgOwner){
-    const sharedCtg = await prisma.categories_shared.findMany({where: {user_id: +res.locals.id, category_id: category_id}})
-    if(!sharedCtg) return res.json({error: "you cannot add item to this category"})
+  try{
+//    const ctgOwner = await prisma.todo_categories.findMany({where: {id: +category_id,user_id: +res.locals.id}})
+//    if(ctgOwner.length === 0){
+//      const sharedCtg = await prisma.categories_shared.findMany({where: {user_id: +res.locals.id, category_id: +category_id}})
+//      if(sharedCtg.length ==0) return res.json({error: "you cannot add item to this category"})
+//    }
+//    const itemOwner = await prisma.todo_items.findMany({ where: {id: item_id, user_id: +res.locals.id}})
+//    if(itemOwner.length === 0) return res.json({error: "you cannot add this item"})
+    const result = await prisma.category_items.create({ data: {item_id: +item_id,category_id: +category_id, added_by: +res.locals.id}})
+    res.json({message: "category added"})
+  }catch(err){
+    console.log(err)
+    res.json({error: "something went wrong"})
   }
-  const itemOwner = await prisma.todo_items.findMany({ where: {id: item_id, user_id: +res.locals.id}})
-  if(!itemOwner) return res.json({error: "you cannot add this item"})
-  const result = await prisma.category_items.create({ data: {item_id: item_id,category_id: category_id}})
-  res.json({message: "category added"})
+})
+
+app.post("/sharecategory", async (req,res) => {
+  const {user_id,category_id} = req.body
+  if(isNaN(user_id) || user_id == undefined) return res.json({error: "invalid user"})
+  if(isNaN(category_id) || category_id == undefined) return res.json({error: "invalid category"})
+  try{
+    const ctgOwner = await prisma.todo_categories.findMany({ where: {user_id: +res.locals.id, id: category_id}})
+    if(ctgOwner.length === 0) return res.json({error: "you cannot share this category"})
+    const result = await prisma.categories_shared.create( {data: { category_id: category_id,
+                                                             user_id: user_id
+    }})
+    console.log(result)
+    res.json({message: "user added to your category"})
+  }catch(err){
+    console.log(err)
+    res.json({error: "something went wrong"})
+  }
 })
 
 app.post("/removecategoryfromitem", async (req,res) => {
-  
+  const {category_id,item_id} = req.body
+  if((isNaN(category_id) || !category_id) || (isNaN(item_id) || !item_id)) return res.json({error: 'invalid data'})
+  try{
+    const ctgOwner = await prisma.todo_categories.findMany({where: {id: category_id,user_id: +res.locals.id}})
+    if(ctgOwner.length === 0){
+      const sharedCtg = await prisma.categories_shared.findMany({where: {user_id: +res.locals.id, category_id: category_id}})
+      if(sharedCtg.length === 0) return res.json({error: "you cannot add item to this category"})
+    }
+    const itemOwner = await prisma.todo_items.findMany({ where: {id: item_id, user_id: +res.locals.id}})
+    if(itemOwner.length === 0) return res.json({error: "you cannot add this item"})
+    const result = await prisma.category_items.deleteMany({ where: {item_id: item_id, category_id: category_id}})
+    console.log(result)
+    res.json({message: "category deleted from item"})
+  }catch(err){
+    console.log(err)
+    res.json({error: "something went wrong"})
+  }
+})
+
 app.get("/api/mal/animedetails", async (req,res) => {
   try{
     if(isNaN(req.query.id)) return res.json({error: "invlaid id"})
