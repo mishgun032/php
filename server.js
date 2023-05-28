@@ -36,7 +36,7 @@ app.use(cors({
 }))
 app.use(cookieParser())
 app.use(isLoggedIn.unless({
-  path: ["/login","/","/createuser","/api/mal/seasonal","/token"],
+  path: ["/login","/","/createuser","/api/mal/seasonal","/api/mal/animedetails","/token",],
 }));
 app.use(express.json())
 
@@ -44,21 +44,25 @@ class Cache {
   constructor(){
     this.expiraction = 43200000 //12h in ms 
     this.anime = {
-      apiKey : "97f19bb6ca11e00d2031a0258794dc52"
+      apiKey : "97f19bb6ca11e00d2031a0258794dc52",
+      animeDetails: {}
     };
     this.nyt = {
       apiKey:'y9pg09oq37Vdf5NP9DesBC7KeT368izV'
     };
     this.todo = {};
     this.github = {};
-    this.err = {};
+    this.err = {
+      anime: {},
+      nyt: {}
+    };
   }
 
   //all the getters
   async getSeasonalAnime(year= new Date().getFullYear(),season= seasons[Math.round((new Date().getMonth()+1)/4)],offset=0,limit=10){
-    if(this.err.anime){
+    if(this.err.anime.seasonal){
       await this.updateAnimeSeasonal(year,season,offset);
-      if(this.err.anime) return {message: "could not get anime "}
+      if(this.err.anime.seasonal) return {error: "could not get anime "}
     };
     if(this.anime[year]) {
       if(this.anime[year][season]) {
@@ -72,6 +76,37 @@ class Cache {
     await this.updateAnimeSeasonal(year,season,offset,limit)
     return await this.getSeasonalAnime(year,season,offset,limit)
   }
+  async getAnimeDetails(id){
+    try{
+      if(this.err.anime.details){
+	await this.fetchAnimeDetails(id)
+	if(this.err.anime.details) throw new Error("could not get the anime details")
+      }
+      if(this.anime.animeDetails[id]){
+	return this.anime.animeDetails[id]
+      }
+      await this.fetchAnimeDetails(id)
+      return await this.getAnimeDetails(id)
+    }catch(err){
+      return new Error(err)
+    }
+  }
+  async fetchAnimeDetails(id){
+    console.log('fetching details')
+    try{
+      const req = await fetch(`https://api.myanimelist.net/v2/anime/${id}?fields=alternative_titles,start_date,end_date,synopsis,mean,media_type,status,genres,num_episodes,start_season,broadcast,source,related_anime,studios`, {
+	method:"GET",
+	headers: {'X-MAL-CLIENT-ID': this.anime.apiKey}
+      })
+      const res = await req.json()
+      this.anime.animeDetails[id] = res
+    }catch(err){
+      console.log(err)
+      this.err.anime.details = err
+      return new Error("something went wrong")
+    }
+  }
+
   async getTopAnime(){
 
   }
@@ -103,7 +138,7 @@ class Cache {
   async updateAnimeSeasonal(year= new Date().getFullYear(),season= seasons[Math.round((new Date().getMonth()+1)/4)],offset=0,limit=10){
     console.log('fetching anime')
     try{
-      const req = await fetch(`https://api.myanimelist.net/v2/anime/season/${year}/${season}?offset=${offset}&limit=${limit}&sort=anime_num_list_users&fields=raiting,studios,source,num_episodes,genres,status,mean,synopsis`,{
+      const req = await fetch(`https://api.myanimelist.net/v2/anime/season/${year}/${season}?offset=${offset}&limit=${limit}&sort=anime_num_list_users&fields=raiting,mean,rank`,{
 	method:"GET",
 	headers: {
 	  'X-MAL-CLIENT-ID': this.anime.apiKey
@@ -114,9 +149,9 @@ class Cache {
       if(!this.anime[year]) this.anime[year] = {}
       if(!this.anime[year][season]) this.anime[year][season] = {}
       this.anime[year][season][offset] = anime
-      if(this.err.anime)delete this.err.anime
+      if(this.err.anime.seasonal) delete this.err.anime.seasonal
     }catch(err){
-      this.err.anime = err
+      this.err.anime.seasonal = err
     }
   }
   async updateAnimeRanking(type,offset,limit){
@@ -346,6 +381,14 @@ app.post("/addcategorytoitem", async (req,res) => {
 
 app.post("/removecategoryfromitem", async (req,res) => {
   
+app.get("/api/mal/animedetails", async (req,res) => {
+  try{
+    if(isNaN(req.query.id)) return res.json({error: "invlaid id"})
+    return res.json({message: await cache.getAnimeDetails(req.query.id)})
+  }catch(err){
+    console.log(err)
+    res.json({error: err})
+  }
 })
 
 app.get('/api/mal/raking', async (req,res) => {
