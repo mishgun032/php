@@ -202,8 +202,8 @@ app.post("/createuser", async (req,res) => {
       if(err){console.log(err); return res.send({error: "somehitng went wrong"})}
       try{
         const user = await prisma.users.create({ data: {name: req.body.user_name,password: hash}})
-        return res.send(JSON.stringify({message: "user added",user:user}))
-      } catch (err) { console.log(err); return res.send(JSON.stringify({error: "something went wrong"})) }
+        return res.json({message: "user added",user:user})
+      } catch (err) { console.log(err); return res.json({error: "something went wrong"})}
     });
   });
 })
@@ -229,17 +229,18 @@ app.post("/login", async (req,res) => {
     console.log(user)
     bcrypt.compare(req.body.password, user.password, async (err, result) => {
       if(err){console.log(err); return res.send({error: "somehitng went wrong"})}
-      if(!result){return res.send(JSON.stringify({error: "invalid password"}))}
+      if(!result){return res.json({error: "invalid password"})}
       const {token,refresh_token} = await login(user.name,user.id)
       if(!token || !refresh_token) return res.json({error: "could not log you in"})
       res.cookie("access_token",token, { maxAge: COOKIE_LIFE_TIME, httpOnly: true, secure: true, sameSite: "none",expires: new Date(Date.now() + COOKIE_LIFE_TIME) })
       return res.json({message: "you are logged in",refresh_token: refresh_token})
     });
-  } catch (err) { console.log(err); return res.send(JSON.stringify({error:"something went wrong"}))}
+  } catch (err) { console.log(err); return res.json({error:"something went wrong"})}
 })
 
 app.post("/logout", async (req,res) => {
   res.clearCookie("access_token")
+  redis.hDel(req.cookies.access_token)
   res.json({message: "you are logged out"})
 })
 
