@@ -509,10 +509,17 @@ app.get('/api/mal/seasonal', async (req,res) => {
   const offset = req.query.offset
   const year = req.query.year
   const season = req.query.season
-  if (limit && isNaN(limit)) return res.status(401).send("invalid limit")
-  if(isNaN(offset)) return res.status(401).send("invalid offset")
-  if (seasons.indexOf(season) == -1) return res.status(401).send("invalid season")
-  res.send(await cache.getSeasonalAnime(year,season,offset,limit))
+  if (limit && isNaN(limit)) return res.status(401).send(new Error("invalid limit"))
+  if(offset && isNaN(offset)) return res.status(401).send(new Error("invalid offset"))
+  if (seasons.indexOf(season) == -1) return res.status(401).send(new Error("invalid season"))
+  try{
+    const anime = await cache.getSeasonalAnime(year,season,offset,limit)
+    if(anime.length === limit) anime[0].next = `${req.url}?limit=${limit}&offset=${offset+limit}&season=${season}&year=${year}`
+    res.send(anime)
+  }catch(err){
+    console.log(err)
+    res.send(new Error(err))
+  }
 })
 
 app.get("api/nyt", async(req,res) => {
