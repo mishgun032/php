@@ -240,7 +240,7 @@ app.post("/login", async (req,res) => {
 
 app.post("/logout", async (req,res) => {
   res.clearCookie("access_token")
-  redis.hDel(req.cookies.access_token)
+  redis.DEL(req.cookies.access_token)
   res.json({message: "you are logged out"})
 })
 

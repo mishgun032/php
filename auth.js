@@ -1,11 +1,11 @@
 import {unless} from 'express-unless'
 import jwt from 'jsonwebtoken'
-import {redis} from './server.js'
+import {redis} from "./db.js"
 
 export const isLoggedIn = (req,res,next) => {
   if(!req.cookies.access_token){return next(401)}
   jwt.verify(req.cookies.access_token, process.env.ACCESS_TOKEN_SECRET, (err,usr) => {
-    if(err){console.log(err); res.clearCookie("access_token");return next(403)};
+    if(err){console.log(err);redis.DEL(req.cookies.access_token); res.clearCookie("access_token"); return next(403);};
     res.locals.logged_in = true
     res.locals.id = usr.user_id
     res.locals.name = usr.user_name
