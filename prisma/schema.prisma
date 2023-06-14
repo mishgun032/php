@@ -14,6 +14,15 @@ model users {
   todo_items        todo_items[]
   todo_categories   todo_categories[]
   categories_shared categories_shared[]
+  list              list[]
+}
+
+model list {
+  id             Int              @id @default(autoincrement())
+  owner          users            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id        Int
+  name           String           @db.VarChar(100)
+  list_items     list_items[]
 }
 
 model todo_items {
@@ -26,6 +35,7 @@ model todo_items {
   due            DateTime?        @db.Date
   desc           Json?            @default("[]")
   category_items category_items[]
+  list_items     list_items[]
   @@unique(fields: [user_id, id])
 }
 
@@ -40,6 +50,14 @@ model todo_categories {
   categories_shared categories_shared[]
   category_items category_items[]
   @@unique(fields: [user_id, id])
+}
+
+model list_items {
+  item        todo_items      @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  item_id     Int
+  list        list            @relation(fields: [list_id], references: [id], onDelete: Cascade)
+  list_id     Int
+  @@unique([item_id,list_id])
 }
 
 model category_items {
