@@ -487,19 +487,20 @@ app.get("/api/mal/animedetails", async (req,res) => {
   }
 })
 
-app.get('/api/mal/raking', async (req,res) => {
+app.get('/api/mal/ranking', async (req,res) => {
   try{
     const limit = req.query.limit
     const offset = req.query.offset
-    const year = req.query.year
-    const season = req.query.season
-    if (limit && isNaN(limit)) return res.status(401).send("invalid limit")
-    if(isNaN(offset)) return res.status(401).send("invalid offset")
-    if (seasons.indexOf(season) == -1) return res.status(401).send("invalid season")
-    return res.send(await cache.getAnime(year,season,offset,limit))
+    const rank_type = req.query.type
+    if (limit && isNaN(limit)) return res.status(401).send(new Error("invalid limit"))
+    if(offset && isNaN(offset)) return res.status(401).send(new Error("invalid offset"))
+    if (rank_type) return res.status(401).send(new Error("invalid type"))
+    const anime = await cache.getTopAnime(rank_type,offset,limit)
+    if(anime.length === limit) anime[0].next = `${req.url}?limit=${limit}&offset=${offset+limit}&type=${rank_type}`
+    return res.send(anime)
   }catch(err){
     console.log(err)
-    res.json({error: "something went wrong"})
+    res.send(new Error(err))
   }
 })
 
