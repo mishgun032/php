@@ -1,15 +1,13 @@
-import { createClient } from 'redis'
+import { createClient } from 'redis';
+import { PrismaClient } from '@prisma/client'
 
-const redis = createClient({
-    url: 'redis://@54.89.153.221:6379'
-  });
-redis.on('error', (err) => console.log('Redis Client Error', err));
+export const prisma = new PrismaClient({log: ["query"]})
 
-async function connectToRedis(){
-  
-  await redis.connect();
-}
-connectToRedis()
+export const redis = createClient();
+redis.on('error', err => console.log('Redis Client Error', err));
+await redis.connect();
 
-//cmodule.exports = { redis: redis}
-export default redis
+//redis://@54.89.153.221:6379
+
+
+

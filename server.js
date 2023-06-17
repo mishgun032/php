@@ -1,32 +1,24 @@
 import https from "https"
 import http from 'http'
 import fs from "fs"
-import {COOKIE_LIFE_TIME} from './constants.js'
-const ssl = {
-  key: fs.readFileSync('./localhost-key.pem'),
-  cert: fs.readFileSync('./localhost.pem'),
-};
 
 import express from 'express'
 import cors from 'cors'
-import fetch from 'node-fetch'
 import bcrypt  from 'bcrypt';
 import cookieParser from 'cookie-parser'
-import { PrismaClient } from '@prisma/client'
-import { createClient } from 'redis';
 
 const httpPort = 8080;
 const httpsPort = 3001;
 const app = express()
 
-export const redis = createClient();
-redis.on('error', err => console.log('Redis Client Error', err));
-await redis.connect();
-
-const prisma = new PrismaClient({log: ["query"]})
-
+import {redis,prisma} from './db.js'
 import { isLoggedIn, login, revalidateToken} from "./auth.js"
 
+import {COOKIE_LIFE_TIME} from './constants.js'
+const ssl = {
+  key: fs.readFileSync('./localhost-key.pem'),
+  cert: fs.readFileSync('./localhost.pem'),
+};
 
 app.use(cors({
   origin: true,
@@ -34,6 +26,7 @@ app.use(cors({
   exposedHeaders: "Set-Cookie",
   methods: "GET,POST",
 }))
+
 app.use(cookieParser())
 app.use(isLoggedIn.unless({
   path: ["/login","/","/createuser","/api/mal/seasonal","/api/mal/animedetails","/token",],
