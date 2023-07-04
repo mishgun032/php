@@ -1,6 +1,7 @@
 import {unless} from 'express-unless'
 import jwt from 'jsonwebtoken'
-import {redis} from "./db.js"
+import {redis} from "../db.js"
+import {COOKIE_LIFE_TIME} from '../constants.js'
 
 export const isLoggedIn = (req,res,next) => {
   if(!req.cookies.access_token){return next(401)}
@@ -22,6 +23,7 @@ export async function login(name,id){
   const refresh_token = jwt.sign({},process.env.REFRESH_TOKEN_SECRET)
   await redis.HSET(refresh_token, "user_id", id)
   await redis.HSET(refresh_token, "user_name", name)
+  await redis.expire(refresh_token, COOKIE_LIFE_TIME/1000)
   return {token,refresh_token}
 }
 
@@ -32,7 +34,7 @@ export function generateAccessToken(name,id){
   return jwt.sign({
     user_id: id,
     user_name: name,
-  },process.env.ACCESS_TOKEN_SECRET,{expiresIn: "10h"})
+  },process.env.ACCESS_TOKEN_SECRET,{expiresIn: "1h"})
 }
 
 export function revalidateToken(refreshToken,{user_id,user_name}){

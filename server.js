@@ -12,7 +12,7 @@ const httpsPort = 3001;
 const app = express()
 
 import {redis,prisma} from './db.js'
-import { isLoggedIn, login, revalidateToken} from "./auth.js"
+import { isLoggedIn, login, revalidateToken} from "./auth/auth.js"
 
 import {COOKIE_LIFE_TIME} from './constants.js'
 const ssl = {
